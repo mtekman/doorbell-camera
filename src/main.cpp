@@ -1,7 +1,6 @@
 #include "esp_camera.h"
 #include <WiFi.h>
 
-//
 // WARNING!!! PSRAM IC required for UXGA resolution and high JPEG quality
 //            Ensure ESP32 Wrover Module or other board with PSRAM is selected
 //            Partial images will be transmitted if image exceeds buffer size
@@ -29,7 +28,6 @@
 //#define CAMERA_MODEL_ESP32S3_CAM_LCD
 
 #include "camera_pins.h"
-
 
 #define uS_TO_S_FACTOR 1000000  /* Conversion factor for micro seconds to seconds */
 
@@ -62,9 +60,7 @@ void print_wakeup_reason(){
 
 
 void start_wifi() {
-
   String junk;
-
   String cssid;
   String cssid2;
   String cpass;
@@ -86,7 +82,7 @@ void start_wifi() {
     cssid.toCharArray(ssidch, cssid.length() + 1);
     cssid2.toCharArray(ssidch2, cssid2.length() + 1);
     cpass.toCharArray(passch, cpass.length() + 1);
-    
+
     if (String(cssid) == "ap" || String(cssid) == "AP") {
       WiFi.softAP(ssidch2, passch);
 
@@ -134,6 +130,17 @@ void start_wifi() {
   }
 }
 
+void led_blink(uint num_times = 2,
+               uint delay1 = 50, uint delay2 = 50) {
+  while (num_times-- > 0){
+    delay(delay1);
+    digitalWrite(BLUE_LED_PIN, HIGH);
+    delay(delay2);
+    digitalWrite(BLUE_LED_PIN, LOW);
+  }
+}
+
+
 
 RTC_DATA_ATTR int bootCount = 0;
 
@@ -141,9 +148,9 @@ void setup() {
   Serial.begin(115200);
   Serial.setDebugOutput(true);
   Serial.println();
-  Serial.println("-----------------------------------------------------------");
-  Serial.println("https://github.com/jameszah/CameraWebServerRecorder 55.10\n");
-  Serial.println("-----------------------------------------------------------");
+  Serial.println("--------------");
+  Serial.println("Camera Server\n");
+  Serial.println("--------------");
 
   ++bootCount;
   Serial.println("Boot number: " + String(bootCount));
@@ -158,7 +165,7 @@ void setup() {
   esp_sleep_enable_timer_wakeup(2 * uS_TO_S_FACTOR);
   Serial.println("Setup ESP32 to sleep for every " + String(5) + " Seconds");
 
-  
+
   camera_config_t config;
   config.ledc_channel = LEDC_CHANNEL_0;
   config.ledc_timer = LEDC_TIMER_0;
@@ -186,6 +193,9 @@ void setup() {
   config.fb_location = CAMERA_FB_IN_PSRAM;
   config.jpeg_quality = 12;
   config.fb_count = 1;
+
+  pinMode(BLUE_LED_PIN, OUTPUT); // Initialize the LED pin as an output
+  led_blink(3);
 
   // if PSRAM IC present, init with UXGA resolution and higher JPEG quality
   //                      for larger pre-allocated frame buffer.
@@ -257,11 +267,11 @@ void setup() {
   /* delay(1000); */
   /* Serial.flush(); */
   /* esp_light_sleep_start(); // resumes here after awakening */
-  
+
   startCameraServer();
 
   Serial.println("Started Camera Server");
-  
+
   // 5000 stack, prio 5 same at http streamer, core 1
   xTaskCreatePinnedToCore( the_camera_loop, "the_camera_loop", 5000, NULL, 5, &the_camera_loop_task, 1);
 
@@ -281,9 +291,11 @@ void loop() {
     int time_to_sleep = ++noDetectCount * 10;
     Serial.println("\nNothing. Deep sleep for " + String(time_to_sleep) + " seconds for every 1 minute of inactivity");
     esp_sleep_enable_timer_wakeup(time_to_sleep * uS_TO_S_FACTOR);
-    Serial.flush(); 
+    Serial.flush();
     //esp_deep_sleep_start(); // Boots to setup upon awakening
+    led_blink(10);
     esp_light_sleep_start(); // Boots to loop upon awakening
+    led_blink(3);
     loopCount = 0;
   }
 }
