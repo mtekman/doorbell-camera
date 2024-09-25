@@ -157,6 +157,7 @@ you can subclass depending on the target
       default_envs = esp32s3
 
       [env]
+      monitor_filters = colorize
       platform = espressif32
       framework = arduino
       monitor_speed = 115200
