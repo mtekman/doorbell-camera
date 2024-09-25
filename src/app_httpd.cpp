@@ -1,5 +1,5 @@
 /*
- * Orignial from espressif, part of arduino-esp32
+ * Original from espressif, part of arduino-esp32
  * 
  * https://github.com/espressif/arduino-esp32/tree/master/libraries/ESP32/examples/Camera/CameraWebServer
  * 
