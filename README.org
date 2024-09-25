@@ -123,8 +123,10 @@ data onto a device is doing the following
   #+end_src
 
 + Run
-  #+begin_src bash
-    mode=esp32 ## or esp32s3
+  #+begin_src bash :tangle ./run.sh
+    file=CameraWebServerRecorder.ino
+    mode=esp32s3 ## or esp32s3
+
     if [ "$FQBN" == "esp32" ]; then
         FQBN=$mode
         SERIAL=ttyUSB0
@@ -134,9 +136,12 @@ data onto a device is doing the following
         SERIAL=ACM0
         EXTRARGS="-c baudrate=115200,rts=on,bits=7"
     fi
-    arduino-cli compile --fqbn esp32:esp32:$FQBN CameraWebServerRecorder.ino
-    arduino-cli upload -p /dev/$SERIAL --fqbn esp32:esp32:$FQBN CameraWebServerRecorder.ino
-    arduino-cli monitor -p /dev/$SERIAL "$EXTRAARGS" --fqbn esp32:esp32:$FQBN CameraWebServerRecorder.ino
+
+    cd src
+    arduino-cli compile --fqbn esp32:esp32:${FQBN} ${file}
+    arduino-cli upload -p /dev/${SERIAL} --fqbn esp32:esp32:${FQBN} ${file}
+    arduino-cli monitor -p /dev/${SERIAL} ${EXTRAARGS} --fqbn esp32:esp32:${FQBN} ${file}
+    cd ..
   #+end_src
 
 The only issue is the Arduino seems intent on keeping most of the source code within this INO file.
@@ -146,15 +151,13 @@ The only issue is the Arduino seems intent on keeping most of the source code wi
 This is quite easy to do, you just fill out a platformio with general environment variables, which
 you can subclass depending on the target
 
-    #+begin_src conf
+    #+begin_src conf :tangle platformio.ini
       [platformio]
-      src_dir = .
-      default_envs = aithinker
-      ; default_envs = wroverkit
+      src_dir = src
+      default_envs = esp32s3
 
       [env]
       platform = espressif32
-      board = esp-wrover-kit
       framework = arduino
       monitor_speed = 115200
       upload_speed = 921600
@@ -163,18 +166,18 @@ you can subclass depending on the target
           -DCORE_DEBUG_LEVEL=0
           -DBOARD_HAS_PSRAM
           -mfix-esp32-psram-cache-issue
-      board_build.partitions = huge_app.csv
-      lib_deps = juerd/ESP-WiFiSettings
+      board_build.partitions = huge_app.csv  ## 3MB for the application and 1MB for SPIFFS (SPI Flash File System).
+      board_build.filesystem = spiffs
+      ##lib_deps = juerd/ESP-WiFiSettings
 
-      [env:m5stack]
-      build_flags = ${env.build_flags} -DCAMERA_MODEL_M5STACK_PSRAM
+      [env:esp32s3]
+      board = esp32-s3-devkitm-1  ## with PSRAM
+      build_flags = ${env.build_flags} -DCAMERA_MODEL_ESP32S3_EYE
           
       [env:aithinker]
       build_flags = ${env.build_flags} -DCAMERA_MODEL_AI_THINKER
 
-      [env:wroverkit]
-      build_flags = ${env.build_flags} -DCAMERA_MODEL_WROVER_KIT
     #+end_src
 
-and then run =platformio run -e m5stack= depending on environment.
+and then run =pio run -e esp32s3= depending on environment, and then monitor via =pio device monitor=
 
