@@ -1,0 +1,180 @@
+#+TITLE: Doorbell Camera
+
+* Motivation
+
+The aim is to build a door bell camera using Espressif [[https://www.espressif.com/en/products/socs/esp32][ESP32
+microcontroller]], similar to the commercial options available (e.g.
+Ring), but without metrics going through to unknown cloud servers, and
+keeping the project open source.
+
+The aim is to run a camera web server (there are known Arduino "sketches" to use as templates), optimized for
+long battery life by making use of various [[https://deepbluembedded.com/esp32-sleep-modes-power-consumption/][sleep modes]], that implements face-detection or motion-detection to
+send image/video notifications to devices.
+
+* Hardware
+
+** Why not a Raspberry Pi?
+
+A Raspberry Pi Linux box would be immediate overkill, simply because we do not need a versatile linux
+operating system with a full driver stack in order to capture images.
+
+A RPi5 at idle will draw ~2.7W, whereas a microcontroller (such as the ESP32, or the RPi-Zero), will
+draw 10x less.
+
+We do not need a Linux OS, we just need some C or microPython code running in a loop.
+
+** ESP32
+
+The ESP32 is perfect for this since it has a chip optimized for AI applications, as well as general image
+processing libraries in realtime.
+
+There are many variants to choose from, but I opted for the cheapest I could find, which
+resulted in the ESP32-CAM board and the ESP32-S3 Dev kit.
+
+
+| Feature             | ESP32-CAM              | ESP32-S3                        |
+|---------------------+------------------------+---------------------------------|
+| Processor           | Dual Xtensa LX6 32-bit | Dual Xtensa LX7 32-bit          |
+| Max. Clock          | 240 MHz                | 240 MHz                         |
+| SRAM                | 520 KB                 | 512 KB                          |
+| ROM                 | 448 KB                 | 384 KB                          |
+| Flash Memory        | Up to 4 MB             | Up to 8 MB                      |
+| Wi-Fi               | 2.4 GHz (802.11 b/g/n) | 2.4 GHz (802.11 b/g/n)          |
+| Bluetooth           | BLE 4.2                | BLE 5.0                         |
+| GPIO Pins           | 9                      | 45                              |
+| Serial Connection   | Use a Daughterboard    | Native USB to Serial            |
+| Power Consumption   | Medium                 | Low                             |
+| AI/Machine Learning | Limited                | Enhanced AI and ML capabilities |
+
+*** ESP32-CAM + Daughter Board
+
+[[file:./images/esp32-cam-and-daughter.jpg]]
+
+The top board is camera module, and to interact and program it, you
+slot it into the the daughter board using the black pins.
+
+*** ESP32-S3 
+
+[[file:./images/esp32s3.png]]
+
+The all in one board. The camera slot lies on the otherside.
+
+
+* Software
+
+** Template Code
+
+We will be using James Zah's excellent [[https://github.com/jameszah/CameraWebServerRecorder][Camera Web Server Recorder]] and optimize it for our needs.
+James extended the base CamerWebServer example given by arduino and added AVI support to save streams
+as video to disk. What a legend!
+
+** Platform SDK
+
+Three main SDKs: IDF, PlatformIO, and Arduino.
+
+*** IDF
+
+The ESP32 has it's own flasher, the [[https://github.com/espressif/esp-idf][esp-idf]], along with a host of examples.
+
+#+begin_src bash
+  git clone https://github.com/espressif/esp-idf.git
+  cd esp-idf
+  ./install.sh esp32  ## or ./install esp32s3
+  # Now source the exported variables
+  . ./export.sh
+#+end_src
+
+This installs and exposes =idf.py=, which can be used to pull sketches
+
+#+begin_src bash
+  mkdir ~/repos/_mtekman/espcamera
+  idf.py create-project-from-example "espressif/esp32-camera:camera_example"
+  cd camera_example
+#+end_src
+
+We can then configure the DEFINE headers
+
+#+begin_src bash
+  idf.py set-target esp32 ## not really needed if export.sh is used
+  idf.py menuconfig
+#+end_src
+
+Then finally compile the code, flash to serial and then monitor through serial
+
+#+begin_src bash
+  idf.py build flash monitor
+#+end_src
+
+This works well, but the code is limited to just ESP devices. We
+should use a more general framework like [[https://platformio.org/][PlatformIO]] and [[https://www.arduino.cc/][Arduino]].
+
+*** Arduino
+
+Arduino IDE appears to be very Windows-centric, and literally does not start for me no matter what I do.
+I've filed a [[https://github.com/arduino/arduino-ide/issues/2510][comprehensive bug report]] which has been ignored. Fun.
+
+The Arduino command line =arduino-cli= seems to be largely functional however and the main way of flashing
+data onto a device is doing the following
+
++ Change =CameraWebServerRecorder.ino=
+  #+begin_src c
+    #define CAMERA_MODEL_AI_THINKER // Has PSRAM -- Uncomment this for ESP32
+    #define CAMERA_MODEL_ESP32S3_EYE // Has PSRAM -- Uncomment this for ESP32S3
+  #+end_src
+
++ Run
+  #+begin_src bash
+    mode=esp32 ## or esp32s3
+    if [ "$FQBN" == "esp32" ]; then
+        FQBN=$mode
+        SERIAL=ttyUSB0
+        EXTRARGS=""
+    elif [ "$FQBN" == "esp32s3" ]; then
+        FQBN=$mode
+        SERIAL=ACM0
+        EXTRARGS="-c baudrate=115200,rts=on,bits=7"
+    fi
+    arduino-cli compile --fqbn esp32:esp32:$FQBN CameraWebServerRecorder.ino
+    arduino-cli upload -p /dev/$SERIAL --fqbn esp32:esp32:$FQBN CameraWebServerRecorder.ino
+    arduino-cli monitor -p /dev/$SERIAL "$EXTRAARGS" --fqbn esp32:esp32:$FQBN CameraWebServerRecorder.ino
+  #+end_src
+
+The only issue is the Arduino seems intent on keeping most of the source code within this INO file.
+
+*** PlatformIO
+
+This is quite easy to do, you just fill out a platformio with general environment variables, which
+you can subclass depending on the target
+
+    #+begin_src conf
+      [platformio]
+      src_dir = .
+      default_envs = aithinker
+      ; default_envs = wroverkit
+
+      [env]
+      platform = espressif32
+      board = esp-wrover-kit
+      framework = arduino
+      monitor_speed = 115200
+      upload_speed = 921600
+      board_build.flash_mode = qio
+      build_flags =
+          -DCORE_DEBUG_LEVEL=0
+          -DBOARD_HAS_PSRAM
+          -mfix-esp32-psram-cache-issue
+      board_build.partitions = huge_app.csv
+      lib_deps = juerd/ESP-WiFiSettings
+
+      [env:m5stack]
+      build_flags = ${env.build_flags} -DCAMERA_MODEL_M5STACK_PSRAM
+          
+      [env:aithinker]
+      build_flags = ${env.build_flags} -DCAMERA_MODEL_AI_THINKER
+
+      [env:wroverkit]
+      build_flags = ${env.build_flags} -DCAMERA_MODEL_WROVER_KIT
+    #+end_src
+
+and then run =platformio run -e m5stack= depending on environment.
+
