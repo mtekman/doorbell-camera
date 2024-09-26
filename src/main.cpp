@@ -126,6 +126,9 @@ void setup() {
 
   Serial.println("Started Camera Server");
 
+  // Track wifi connections
+  //WiFi.onEvent(onWiFiEvent);
+
   // 5000 stack, prio 5 same at http streamer, core 1
   xTaskCreatePinnedToCore( the_camera_loop, "the_camera_loop", 5000, NULL, 5, &the_camera_loop_task, 1);
 
@@ -138,19 +141,7 @@ int sleepMult = 1;
 int loopCount = 0;
 
 void loop() {
-  Serial.print("\rLoop: " + String(loopCount));
-  delay(500);
-  if (++loopCount > 30){
-    int time_to_sleep = ++noDetectCount * 10;
-    Serial.println("\nNothing. Deep sleep for " +
-                   String(time_to_sleep) +
-                   " seconds for every 1 minute of inactivity");
-    Serial.flush();
-    esp_wakeup_seconds(time_to_sleep * uS_TO_S_FACTOR);
-    //esp_deep_sleep_start(); // Boots to setup upon awakening
-    led_blink(10);
-    esp_light_sleep_start(); // Boots to loop upon awakening
-    led_blink(2, 500, 500);
-    loopCount = 0;
-  }
+  led_blink(2, 10, 50);
+  delay(2000);
+  Serial.printf("User is connected: %b\n", USER_IS_CONNECTED);
 }

@@ -4,6 +4,17 @@
 const char* def_ssid = "VPS11826";
 const char* def_pass = "123456789";
 
+void onWiFiEvent(WiFiEvent_t event) {
+  switch (event) {
+    case SYSTEM_EVENT_AP_STACONNECTED:
+      Serial.println("Client connected");
+      break;
+    case SYSTEM_EVENT_AP_STADISCONNECTED:
+      Serial.println("Client disconnected");
+      break;
+  }
+}
+
 void start_wifi() {
   String junk;
   String cssid;
@@ -71,7 +82,6 @@ void start_wifi() {
     Serial.print(def_ssid); Serial.print(" / "); Serial.println(def_pass);
     Serial.print("AP IP address: ");
     Serial.println(IP);
-
   }
 }
 
