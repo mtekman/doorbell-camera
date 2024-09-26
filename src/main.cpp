@@ -138,18 +138,19 @@ int sleepMult = 1;
 int loopCount = 0;
 
 void loop() {
-  Serial.print("\r");
-  Serial.print("Loop: " + String(loopCount));
+  Serial.print("\rLoop: " + String(loopCount));
   delay(500);
   if (++loopCount > 30){
     int time_to_sleep = ++noDetectCount * 10;
-    Serial.println("\nNothing. Deep sleep for " + String(time_to_sleep) + " seconds for every 1 minute of inactivity");
-    esp_wakeup_seconds(time_to_sleep * uS_TO_S_FACTOR);
+    Serial.println("\nNothing. Deep sleep for " +
+                   String(time_to_sleep) +
+                   " seconds for every 1 minute of inactivity");
     Serial.flush();
+    esp_wakeup_seconds(time_to_sleep * uS_TO_S_FACTOR);
     //esp_deep_sleep_start(); // Boots to setup upon awakening
     led_blink(10);
     esp_light_sleep_start(); // Boots to loop upon awakening
-    led_blink(3);
+    led_blink(2, 500, 500);
     loopCount = 0;
   }
 }
