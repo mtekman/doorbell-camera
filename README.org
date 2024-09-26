@@ -185,3 +185,47 @@ you can subclass depending on the target
 
 and then run =pio run -e esp32s3= depending on environment, and then monitor via =pio device monitor=
 
+* Planned Mode of Operation
+
+The camera iterates between different [[https://deepbluembedded.com/esp32-sleep-modes-power-consumption/][sleep modes]].
+
+_Main Operation:_
+
+#+begin_src mermaid :results file  :file images/flowdiag.jpg
+stateDiagram-v2
+    direction TB
+    [*] --> Active : Wake From Light Sleep
+    Active --> motiondetected
+    state DetectMotion {
+        state noIM <<choice>>
+        state "Inital Motion?" as motiondetected
+        motiondetected --> MotionStarted : Yes
+        motiondetected -->  noIM : No
+        MotionStarted --> goodmotion: Start Recording
+        noIM --> webactive
+    }
+    state ProlongedMotion {
+        state noPM <<choice>>
+        state "Motion Longer than 5 seconds?" as goodmotion
+        goodmotion --> MotionConfirmed: Yes
+        goodmotion --> noPM: No
+        noPM --> webactive: Discard Recording
+        MotionConfirmed --> MotionOngoing : Send Message to Notification Server
+        MotionOngoing --> MotionFinished : Send Video to Notification Server
+        MotionFinished --> webactive
+    }
+    state WebServer {
+        state noWS <<choice>>
+        state "HTTP connection active?" as webactive
+        state "Wait on User" as ActiveUser
+        webactive -->  ActiveUser : Yes
+        webactive --> noWS : No
+    }
+    state "Light Sleep" as LightSleep2
+    noWS --> LightSleep2: 
+    ActiveUser --> LightSleep2: User Quits
+    LightSleep2 --> [*]
+#+end_src
+
+#+RESULTS:
+[[file:images/flowdiag.png]]
