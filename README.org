@@ -196,30 +196,38 @@ _Main Operation:_
       direction TB
       [*] --> Active : Wake From Light Sleep
       Active --> motiondetected
-      state DetectMotion {
-          state noIM <<choice>>
-          state "Inital Motion?" as motiondetected
-          motiondetected --> MotionStarted : Yes
-          motiondetected -->  noIM : No
-          MotionStarted --> goodmotion: Start Recording
-          noIM --> webactive
-      }
-      state ProlongedMotion {
-          state noPM <<choice>>
-          state "Motion Longer than 5s?" as goodmotion
-          goodmotion --> MotionConfirmed: Yes
-          goodmotion --> noPM: No
-          noPM --> webactive: Discard Recording
-          MotionConfirmed --> MotionFinished : Send Message to Notification Server
-          MotionFinished --> webactive : Send Video to Notification Server
-      }
-      state WebServer {
-          state noWS <<choice>>
-          state "HTTP connection active?" as webactive
-          state "Wait on User" as ActiveUser
-          webactive -->  ActiveUser : Yes
-          webactive --> noWS : No
-      }
+          state DetectMotion {
+              state noIM <<choice>>
+              state "Inital Motion?" as motiondetected
+              motiondetected --> MotionStarted : Yes
+              motiondetected -->  noIM : No
+              MotionStarted --> goodmotion: Start Recording
+              noIM --> userconn
+          }
+          state ProlongedMotion {
+              state noPM <<choice>>
+              state "Motion Longer than 5s?" as goodmotion
+              goodmotion --> MotionConfirmed: Yes
+              goodmotion --> noPM: No
+              noPM --> userconn: Discard Recording
+              MotionConfirmed --> MotionFinished : Send Message to Notification Server
+              MotionFinished --> userconn : Send Video to Notification Server
+          }
+          state Wifi {
+              state noWF <<choice>>
+              state "User Connected to AP?" as userconn
+              userconn --> StartWebserver : Yes
+              userconn --> noWF: No
+          }
+          StartWebserver --> webactive
+          state WebServer {
+              state noWS <<choice>>
+              state "HTTP connection active?" as webactive
+              state "Wait on User" as ActiveUser
+              webactive -->  ActiveUser : Yes
+              webactive --> noWS : No
+          }
+      noWF --> LightSleep2
       state "Light Sleep" as LightSleep2
       noWS --> LightSleep2: 
       ActiveUser --> LightSleep2: User Quits
