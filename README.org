@@ -194,46 +194,51 @@ _Main Operation:_
 #+begin_src mermaid :results file  :file images/flowdiag.jpg
   stateDiagram-v2
       direction TB
-      [*] --> Active : Wake From Light Sleep
-      Active --> motiondetected
+      state "Active Mode" as ActiveMode
+      [*] --> ActiveMode : Wake From Light Sleep
+      ActiveMode --> DetectMotion: Thread #1 
+      ActiveMode --> Wifi: Thread #2
       state DetectMotion {
-          state noIM <<choice>>
-          state "Inital Motion?" as motiondetected
-          motiondetected --> MotionStarted : Yes
-          motiondetected -->  noIM : No
-          MotionStarted --> goodmotion: Start Recording
-          noIM --> userconn
-      }
-      state ProlongedMotion {
-          state noPM <<choice>>
-          state "Motion Longer than 5s?" as goodmotion
-          goodmotion --> MotionConfirmed: Yes
-          goodmotion --> noPM: No
-          noPM --> userconn: Discard Recording
-          MotionConfirmed --> MotionFinished : Send Message to Notification Server
-          MotionFinished --> userconn : Send Video to Notification Server
+          [*] --> MotionDetected
+          state "Motion Detected?" as MotionDetected
+          state modetect <<choice>>
+          MotionDetected --> modetect
+          modetect --> MotionLonger : Yes
+          modetect -->  [*]
+          state "Longer than 5s?" as MotionLonger
+          state modetect2 <<choice>>
+          MotionLonger --> modetect2
+          modetect2 --> [*]
+          modetect2 --> SendPhoto: Yes, motion confirmed
+          SendPhoto --> SendVideo: Wait for motion to finish
+          SendVideo --> [*]
+          state "Send Photo" as SendPhoto
+          state "Send Video" as SendVideo
       }
       state Wifi {
-          state noWF <<choice>>
-          state "Users Connected to AP>0?" as userconn
-          userconn --> StartWebserver : Yes
-          userconn --> noWF: No
+          [*] --> NumUsers
+          state "Number
+          of AP
+          Users > 0?" as NumUsers
+          state numuse <<choice>>
+          NumUsers --> numuse
+          numuse --> StartWeb : Yes
+          state prekill <<join>>
+          numuse --> prekill: No
+          state "Start
+          Webserver" as StartWeb
+          StartWeb --> prekill: Wait for #AP Users == 0
+          prekill --> KillWeb
+          state "Kill
+          Webserver
+          (if active)" as KillWeb
+          KillWeb --> [*]
       }
-      StartWebserver --> webactive
-      state WebServer {
-          state noWS <<choice>>
-          state "HTTP connection active?" as webactive
-          state "Wait For Last User" as ActiveUser
-          webactive -->  ActiveUser : Yes
-          webactive --> noWS : No
-          ActiveUser --> KillWebServer: User Disconnect
-
-      }
-      KillWebServer --> LightSleep2
-      noWF --> LightSleep2
-      state "Light Sleep" as LightSleep2
-      noWS --> LightSleep2: 
-      LightSleep2 --> [*]
+      DetectMotion --> WaitForThreads
+      state "Wait For Threads" as WaitForThreads
+      Wifi --> WaitForThreads
+      WaitForThreads --> [*]: Light Sleep
+      
 #+end_src
 
 #+RESULTS:
