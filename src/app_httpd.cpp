@@ -1369,7 +1369,6 @@ void startCameraServer()
         .handler = stream_handler,
         .user_ctx = NULL
     };
-
     
     config.server_port += 1;
     config.ctrl_port += 1;
@@ -1384,7 +1383,7 @@ void startCameraServer()
 void stopCameraServer()
 {
 #if CONFIG_ESP_FACE_RECOGNITION_ENABLED
-  // unload recognizer, ?
+  // TODO: unload recognizer 
 #endif
   ESP_LOGI(TAG, "Killing web server");
   if (stream_httpd){
