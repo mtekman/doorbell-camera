@@ -15,6 +15,7 @@ extern void the_camera_loop (void* pvParameter);
 esp_err_t init_sdcard();
 
 void startCameraServer();
+void stopCameraServer();
 
 #include "sleep_funcs.h"
 #include "pin_config.h"
@@ -122,9 +123,7 @@ void setup() {
   /* Serial.flush(); */
   /* esp_light_sleep_start(); // resumes here after awakening */
 
-  startCameraServer();
-
-  Serial.println("Started Camera Server");
+  /* Serial.println("Started Camera Server"); */
 
   // Track wifi connections
   //WiFi.onEvent(onWiFiEvent);
@@ -141,7 +140,17 @@ int sleepMult = 1;
 int loopCount = 0;
 
 void loop() {
-  led_blink(2, 10, 50);
+  if (++loopCount % 10 == 0) {
+    led_blink(2, 10, 50);
+  }
+  // Wifi -- Users Connected to AP > 0?
+  uint8_t stationCount = WiFi.softAPgetStationNum();
+  if (stationCount > 0) {
+      Serial.printf("Number of connected stations: %d\n", stationCount);
+      startCameraServer();
+  } else {
+    stopCameraServer();
+  }
+  Serial.println(stationCount);
   delay(2000);
-  Serial.printf("User is connected: %b\n", USER_IS_CONNECTED);
 }
