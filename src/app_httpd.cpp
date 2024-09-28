@@ -1244,7 +1244,7 @@ static esp_err_t stoprecord_handler(httpd_req_t *req){  //jz
 void startCameraServer()
 {
   if (camera_httpd){
-    Serial.println("Camera HTTPD already up");
+    ESP_LOGI(TAG, "Camera HTTPD already up");
   } else {
     config.max_uri_handlers = 16;
 
@@ -1361,7 +1361,7 @@ void startCameraServer()
   }
 
   if (stream_httpd){
-    Serial.println("Stream HTTPD already up");
+    ESP_LOGI(TAG, "Stream HTTPD already up");
   } else {
     httpd_uri_t stream_uri = {
       .uri = "/stream",
