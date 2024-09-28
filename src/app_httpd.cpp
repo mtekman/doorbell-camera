@@ -115,6 +115,7 @@ static const char *_STREAM_PART = "Content-Type: image/jpeg\r\nContent-Length: %
 
 httpd_handle_t stream_httpd = NULL;
 httpd_handle_t camera_httpd = NULL;
+httpd_config_t config = HTTPD_DEFAULT_CONFIG();
 
 #if CONFIG_ESP_FACE_DETECT_ENABLED
 
@@ -1242,132 +1243,157 @@ static esp_err_t stoprecord_handler(httpd_req_t *req){  //jz
 
 void startCameraServer()
 {
-  httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-  config.max_uri_handlers = 16;
+  if (camera_httpd){
+    Serial.println("Camera HTTPD already up");
+  } else {
+    config.max_uri_handlers = 16;
 
-  httpd_uri_t index_uri = {
-    .uri = "/",
-    .method = HTTP_GET,
-    .handler = index_handler,
-    .user_ctx = NULL
-  };
+    httpd_uri_t index_uri = {
+      .uri = "/",
+      .method = HTTP_GET,
+      .handler = index_handler,
+      .user_ctx = NULL
+    };
 
-  httpd_uri_t status_uri = {
-    .uri = "/status",
-    .method = HTTP_GET,
-    .handler = status_handler,
-    .user_ctx = NULL
-  };
+    httpd_uri_t status_uri = {
+      .uri = "/status",
+      .method = HTTP_GET,
+      .handler = status_handler,
+      .user_ctx = NULL
+    };
 
-  httpd_uri_t cmd_uri = {
-    .uri = "/control",
-    .method = HTTP_GET,
-    .handler = cmd_handler,
-    .user_ctx = NULL
-  };
+    httpd_uri_t cmd_uri = {
+      .uri = "/control",
+      .method = HTTP_GET,
+      .handler = cmd_handler,
+      .user_ctx = NULL
+    };
 
-  httpd_uri_t capture_uri = {
-    .uri = "/capture",
-    .method = HTTP_GET,
-    .handler = capture_handler,
-    .user_ctx = NULL
-  };
+    httpd_uri_t capture_uri = {
+      .uri = "/capture",
+      .method = HTTP_GET,
+      .handler = capture_handler,
+      .user_ctx = NULL
+    };
 
-  httpd_uri_t startrecord_uri = {  //jz
-    .uri = "/startrecord",
-    .method = HTTP_GET,
-    .handler = startrecord_handler,
-    .user_ctx = NULL
-  };
+    httpd_uri_t startrecord_uri = {  //jz
+      .uri = "/startrecord",
+      .method = HTTP_GET,
+      .handler = startrecord_handler,
+      .user_ctx = NULL
+    };
 
-  httpd_uri_t stoprecord_uri = {  //jz
-    .uri = "/stoprecord",
-    .method = HTTP_GET,
-    .handler = stoprecord_handler,
-    .user_ctx = NULL
-  };
+    httpd_uri_t stoprecord_uri = {  //jz
+      .uri = "/stoprecord",
+      .method = HTTP_GET,
+      .handler = stoprecord_handler,
+      .user_ctx = NULL
+    };
 
-  httpd_uri_t stream_uri = {
-    .uri = "/stream",
-    .method = HTTP_GET,
-    .handler = stream_handler,
-    .user_ctx = NULL
-  };
+    httpd_uri_t bmp_uri = {
+      .uri = "/bmp",
+      .method = HTTP_GET,
+      .handler = bmp_handler,
+      .user_ctx = NULL
+    };
 
-  httpd_uri_t bmp_uri = {
-    .uri = "/bmp",
-    .method = HTTP_GET,
-    .handler = bmp_handler,
-    .user_ctx = NULL
-  };
+    httpd_uri_t xclk_uri = {
+      .uri = "/xclk",
+      .method = HTTP_GET,
+      .handler = xclk_handler,
+      .user_ctx = NULL
+    };
 
-  httpd_uri_t xclk_uri = {
-    .uri = "/xclk",
-    .method = HTTP_GET,
-    .handler = xclk_handler,
-    .user_ctx = NULL
-  };
+    httpd_uri_t reg_uri = {
+      .uri = "/reg",
+      .method = HTTP_GET,
+      .handler = reg_handler,
+      .user_ctx = NULL
+    };
 
-  httpd_uri_t reg_uri = {
-    .uri = "/reg",
-    .method = HTTP_GET,
-    .handler = reg_handler,
-    .user_ctx = NULL
-  };
+    httpd_uri_t greg_uri = {
+      .uri = "/greg",
+      .method = HTTP_GET,
+      .handler = greg_handler,
+      .user_ctx = NULL
+    };
 
-  httpd_uri_t greg_uri = {
-    .uri = "/greg",
-    .method = HTTP_GET,
-    .handler = greg_handler,
-    .user_ctx = NULL
-  };
+    httpd_uri_t pll_uri = {
+      .uri = "/pll",
+      .method = HTTP_GET,
+      .handler = pll_handler,
+      .user_ctx = NULL
+    };
 
-  httpd_uri_t pll_uri = {
-    .uri = "/pll",
-    .method = HTTP_GET,
-    .handler = pll_handler,
-    .user_ctx = NULL
-  };
+    httpd_uri_t win_uri = {
+      .uri = "/resolution",
+      .method = HTTP_GET,
+      .handler = win_handler,
+      .user_ctx = NULL
+    };
 
-  httpd_uri_t win_uri = {
-    .uri = "/resolution",
-    .method = HTTP_GET,
-    .handler = win_handler,
-    .user_ctx = NULL
-  };
-
-  ra_filter_init(&ra_filter, 20);
+    ra_filter_init(&ra_filter, 20);
 
 #if CONFIG_ESP_FACE_RECOGNITION_ENABLED
-  recognizer.set_partition(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_ANY, "fr");
+    recognizer.set_partition(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_ANY, "fr");
 
-  // load ids from flash partition
-  recognizer.set_ids_from_flash();
+    // load ids from flash partition
+    recognizer.set_ids_from_flash();
 #endif
-  ESP_LOGI(TAG, "Starting web server on port: '%d'", config.server_port);
-  if (httpd_start(&camera_httpd, &config) == ESP_OK)
-  {
-    httpd_register_uri_handler(camera_httpd, &index_uri);
-    httpd_register_uri_handler(camera_httpd, &cmd_uri);
-    httpd_register_uri_handler(camera_httpd, &status_uri);
-    httpd_register_uri_handler(camera_httpd, &capture_uri);
-    httpd_register_uri_handler(camera_httpd, &bmp_uri);
+    ESP_LOGI(TAG, "Starting web server on port: '%d'", config.server_port);
+    if (httpd_start(&camera_httpd, &config) == ESP_OK)
+      {
+        httpd_register_uri_handler(camera_httpd, &index_uri);
+        httpd_register_uri_handler(camera_httpd, &cmd_uri);
+        httpd_register_uri_handler(camera_httpd, &status_uri);
+        httpd_register_uri_handler(camera_httpd, &capture_uri);
+        httpd_register_uri_handler(camera_httpd, &bmp_uri);
 
-    httpd_register_uri_handler(camera_httpd, &startrecord_uri);  //jz
-    httpd_register_uri_handler(camera_httpd, &stoprecord_uri);
+        httpd_register_uri_handler(camera_httpd, &startrecord_uri);  //jz
+        httpd_register_uri_handler(camera_httpd, &stoprecord_uri);
 
-    httpd_register_uri_handler(camera_httpd, &xclk_uri);
-    httpd_register_uri_handler(camera_httpd, &reg_uri);
-    httpd_register_uri_handler(camera_httpd, &greg_uri);
-    httpd_register_uri_handler(camera_httpd, &pll_uri);
-    httpd_register_uri_handler(camera_httpd, &win_uri);
+        httpd_register_uri_handler(camera_httpd, &xclk_uri);
+        httpd_register_uri_handler(camera_httpd, &reg_uri);
+        httpd_register_uri_handler(camera_httpd, &greg_uri);
+        httpd_register_uri_handler(camera_httpd, &pll_uri);
+        httpd_register_uri_handler(camera_httpd, &win_uri);
+      }
   }
 
-  config.server_port += 1;
-  config.ctrl_port += 1;
-  ESP_LOGI(TAG, "Starting stream server on port: '%d'", config.server_port);
-  if (httpd_start(&stream_httpd, &config) == ESP_OK)
-  {
-    httpd_register_uri_handler(stream_httpd, &stream_uri);
+  if (stream_httpd){
+    Serial.println("Stream HTTPD already up");
+  } else {
+    httpd_uri_t stream_uri = {
+      .uri = "/stream",
+        .method = HTTP_GET,
+        .handler = stream_handler,
+        .user_ctx = NULL
+    };
+
+    
+    config.server_port += 1;
+    config.ctrl_port += 1;
+    ESP_LOGI(TAG, "Starting stream server on port: '%d'", config.server_port);
+    if (httpd_start(&stream_httpd, &config) == ESP_OK)
+      {
+        httpd_register_uri_handler(stream_httpd, &stream_uri);
+      }
+  }
+}
+
+void stopCameraServer()
+{
+#if CONFIG_ESP_FACE_RECOGNITION_ENABLED
+  // unload recognizer, ?
+#endif
+  ESP_LOGI(TAG, "Killing web server");
+  if (stream_httpd){
+    httpd_stop(stream_httpd);
+    stream_httpd = NULL;
+  }
+  ESP_LOGI(TAG, "Killing camera server");  
+  if (camera_httpd){
+    httpd_stop(camera_httpd);
+    camera_httpd = NULL;
   }
 }
