@@ -1243,9 +1243,9 @@ static esp_err_t stoprecord_handler(httpd_req_t *req){  //jz
 
 void startCameraServer()
 {
-  if (camera_httpd){
-    ESP_LOGI(TAG, "Camera HTTPD already up");
-  } else {
+  config = HTTPD_DEFAULT_CONFIG(); // reload
+
+  if (!camera_httpd) {
     config.max_uri_handlers = 16;
 
     httpd_uri_t index_uri = {
@@ -1360,9 +1360,7 @@ void startCameraServer()
       }
   }
 
-  if (stream_httpd){
-    ESP_LOGI(TAG, "Stream HTTPD already up");
-  } else {
+  if (!stream_httpd) {
     httpd_uri_t stream_uri = {
       .uri = "/stream",
         .method = HTTP_GET,
@@ -1385,13 +1383,13 @@ void stopCameraServer()
 #if CONFIG_ESP_FACE_RECOGNITION_ENABLED
   // TODO: unload recognizer
 #endif
-  ESP_LOGI(TAG, "Killing web server");
   if (stream_httpd){
+    ESP_LOGI(TAG, "Killing web server");
     httpd_stop(stream_httpd);
     stream_httpd = NULL;
   }
-  ESP_LOGI(TAG, "Killing camera server");  
   if (camera_httpd){
+    ESP_LOGI(TAG, "Killing camera server");
     httpd_stop(camera_httpd);
     camera_httpd = NULL;
   }

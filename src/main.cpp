@@ -152,7 +152,7 @@ void loop() {
     stopCameraServer();  // 93kb free
   }
   // Metrics:
-  //Serial.printf("Heap : %d bytes\n", esp_get_free_heap_size());
+  ESP_LOGI("Free Heap", "%d", esp_get_free_heap_size());
   // - stopCameraServer: 93 kb free
   // - startCameraserver: 71 kb free, 47 kb free when streaming.
   delay(2000);
