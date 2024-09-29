@@ -1,11 +1,11 @@
 /*
  * Original from espressif, part of arduino-esp32
- * 
+ *
  * https://github.com/espressif/arduino-esp32/tree/master/libraries/ESP32/examples/Camera/CameraWebServer
- * 
+ *
  * forked, or copied about Aug 1, 2022
  * - didn't want to fork the entire arduino-esp32 for this example
- * 
+ *
 */
 
 
@@ -42,7 +42,7 @@ extern int freespace;
 
 #if defined(ARDUINO_ARCH_ESP32) && defined(CONFIG_ARDUHAL_ESP_LOG)
 #include "esp32-hal-log.h"
-#define TAG ""
+#define TAG "HTTP"
 #else
 #include "esp_log.h"
 static const char *TAG = "camera_httpd";
@@ -1202,7 +1202,7 @@ static esp_err_t index_handler(httpd_req_t *req)
   }
 }
 
-static esp_err_t startrecord_handler(httpd_req_t *req){         //jz 
+static esp_err_t startrecord_handler(httpd_req_t *req){         //jz
 
   time_t now;
   struct tm timeinfo;
@@ -1219,7 +1219,7 @@ static esp_err_t startrecord_handler(httpd_req_t *req){         //jz
   } else {
     Serial.println("No time in video start - time will be 1970");
   }
-  
+
   //time(&now);
   //Serial.print("\nLocal time: "); Serial.println(ctime(&now));
   free(buf);
@@ -1369,7 +1369,7 @@ void startCameraServer()
         .handler = stream_handler,
         .user_ctx = NULL
     };
-    
+
     config.server_port += 1;
     config.ctrl_port += 1;
     ESP_LOGI(TAG, "Starting stream server on port: '%d'", config.server_port);
@@ -1383,7 +1383,7 @@ void startCameraServer()
 void stopCameraServer()
 {
 #if CONFIG_ESP_FACE_RECOGNITION_ENABLED
-  // TODO: unload recognizer 
+  // TODO: unload recognizer
 #endif
   ESP_LOGI(TAG, "Killing web server");
   if (stream_httpd){
