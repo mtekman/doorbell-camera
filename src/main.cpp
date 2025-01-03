@@ -18,61 +18,25 @@ esp_err_t init_sdcard();
 RTC_DATA_ATTR int bootCount = 0;
 //RTC_DATA_ATTR int noDetectCount = 0; // preserves accross reboots
 
-//const int motion_pin = 21;
-boolean startTimer = false;
-unsigned long lastTrigger = 0;
-
-// Checks if motion was detected, sets LED HIGH and starts a timer
-void IRAM_ATTR detectsMovement() {
-  digitalWrite(BLUE_LED_PIN, HIGH);
-  startTimer = true;
-  lastTrigger = millis();
-  ESP_LOGI("MOTION NOW", "%d", lastTrigger);
-}
-
 
 void setup() {
   Serial.begin(115200);
   Serial.setDebugOutput(true);
   Serial.println("START: Boot number: " + String(++bootCount));
   
-  pinMode(BLUE_LED_PIN, OUTPUT); // Initialize the LED pin as an output
-  pinMode(GPIO_NUM_21, INPUT_PULLUP);
+  pinMode(BLUE_LED_PIN, OUTPUT); // Initialize the LED pin as an output  
+  pinMode(MOTION_PIR_PIN, INPUT_PULLUP);
 
-  esp_sleep_wakeup_cause_t wakeup_reason = print_wakeup_reason();   //Print the wakeup reason for ESP32
-  if (wakeup_reason == ESP_SLEEP_WAKEUP_EXT0) {
-    detectsMovement(); // Assume woken up by movement
-  } else {
-    digitalWrite(BLUE_LED_PIN, LOW);
-  }
-  
-  //led_blink(3);
-  attachInterrupt(digitalPinToInterrupt(GPIO_NUM_21), detectsMovement, RISING);
-  esp_sleep_enable_ext0_wakeup(GPIO_NUM_21, HIGH);
+  // The detectMovement function happens outside of all loops.
+  configure_pir_setup();
 }
-
-// Loop Vars should be defined here
-int noMotionCount = 0;
-// Timer: Auxiliary variables
-unsigned long now = millis();
-boolean motion = false;
 
 void loop() {
   now = millis();
   //ESP_LOGI("Loop", " count %d and noMotioncount %d",
   ESP_LOGI("Loop", " noMotioncount %d", noMotionCount);
-  if ((digitalRead(BLUE_LED_PIN) == HIGH) && (motion == false)){
-    ESP_LOGI("Motion", " Started when %d", now);
-    motion = true;
-    noMotionCount = 0;
-  }
 
-  if (startTimer && (now - lastTrigger > (MOTION_PROLONG*1000))) {
-    ESP_LOGI("Motion", " Stopped when %d", now);
-    digitalWrite(BLUE_LED_PIN, LOW);
-    startTimer = false;
-    motion = false;
-  }
+  motion_stop_after_prolong();
 
   if (motion == false){
     if (++noMotionCount > SLEEP_AFTER_NOACTIVITY){
