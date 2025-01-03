@@ -4,7 +4,7 @@
 
 #define uS_TO_S_FACTOR 1000000  /* Conversion factor for micro seconds to seconds */
 
-static void inline print_wakeup_reason() {
+static esp_sleep_wakeup_cause_t inline print_wakeup_reason() {
   esp_sleep_wakeup_cause_t wakeup_reason;
 
   wakeup_reason = esp_sleep_get_wakeup_cause();
@@ -18,6 +18,7 @@ static void inline print_wakeup_reason() {
     case ESP_SLEEP_WAKEUP_ULP : Serial.println("Wakeup caused by ULP program"); break;
     default : Serial.printf("Wakeup was not caused by deep sleep: %d\n",wakeup_reason); break;
     }
+  return wakeup_reason;
 }
 
 static void inline esp_wakeup_seconds(int seconds) {
