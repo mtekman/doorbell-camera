@@ -1,5 +1,4 @@
 #include "esp_camera.h"
-#include <WiFi.h>
 #include <SD_MMC.h>
 
 // WARNING!!! PSRAM IC required for UXGA resolution and high JPEG quality
@@ -10,150 +9,76 @@
 //            Face Recognition is DISABLED for ESP32 and ESP32-S2, because it takes up from 15
 //            seconds to process single frame. Face Detection is ENABLED if PSRAM is enabled as well
 
-extern TaskHandle_t the_camera_loop_task;
-extern void the_camera_loop (void* pvParameter);
+#include "sleep_funcs.h"
+#include "led_init.h"
+#include "motion_pir.h"
+
 esp_err_t init_sdcard();
 
-void startCameraServer();
-void stopCameraServer();
-
-#include "sleep_funcs.h"
-#include "pin_config.h"
-#include "led_init.h"
-#include "wifi_init.h"
-
 RTC_DATA_ATTR int bootCount = 0;
+//RTC_DATA_ATTR int noDetectCount = 0; // preserves accross reboots
+
+//const int motion_pin = 21;
+boolean startTimer = false;
+unsigned long lastTrigger = 0;
+
+// Checks if motion was detected, sets LED HIGH and starts a timer
+void IRAM_ATTR detectsMovement() {
+  digitalWrite(BLUE_LED_PIN, HIGH);
+  startTimer = true;
+  lastTrigger = millis();
+  ESP_LOGI("MOTION NOW", "%d", lastTrigger);
+}
+
 
 void setup() {
   Serial.begin(115200);
   Serial.setDebugOutput(true);
-  Serial.println();
-  Serial.println("--------------");
-  Serial.println("Camera Server\n");
-  Serial.println("--------------");
-
-  ++bootCount;
-  Serial.println("Boot number: " + String(bootCount));
-
-  //Print the wakeup reason for ESP32
-  print_wakeup_reason();
-
-  /*
-    First we configure the wake up source
-    We set our ESP32 to wake up every 5 seconds
-  */
-  esp_wakeup_seconds(2);
-  Serial.println("Setup ESP32 to sleep for every " + String(5) + " Seconds");
-
-
-  camera_config_t config;
-  initialize_pins(config);
-
+  Serial.println("START: Boot number: " + String(++bootCount));
+  
   pinMode(BLUE_LED_PIN, OUTPUT); // Initialize the LED pin as an output
-  led_blink(3);
+  pinMode(GPIO_NUM_21, INPUT_PULLUP);
 
-  // if PSRAM IC present, init with UXGA resolution and higher JPEG quality
-  //                      for larger pre-allocated frame buffer.
-  if (config.pixel_format == PIXFORMAT_JPEG) {
-    if (psramFound()) {
-      config.jpeg_quality = 10;
-      config.fb_count = 3;      //jz 2->3 - add another frame for the avi recording
-      config.grab_mode = CAMERA_GRAB_LATEST;
-    } else {
-      // Limit the frame size when PSRAM is not available
-      config.frame_size = FRAMESIZE_SVGA;
-      config.fb_location = CAMERA_FB_IN_DRAM;
-    }
+  esp_sleep_wakeup_cause_t wakeup_reason = print_wakeup_reason();   //Print the wakeup reason for ESP32
+  if (wakeup_reason == ESP_SLEEP_WAKEUP_EXT0) {
+    detectsMovement(); // Assume woken up by movement
   } else {
-    // Best option for face detection/recognition
-    config.frame_size = FRAMESIZE_240X240;
-#if CONFIG_IDF_TARGET_ESP32S3
-    config.fb_count = 2;
-#endif
+    digitalWrite(BLUE_LED_PIN, LOW);
   }
-
-#if defined(CAMERA_MODEL_ESP_EYE)
-  pinMode(13, INPUT_PULLUP);
-  pinMode(14, INPUT_PULLUP);
-#endif
-
-
-  // camera init
-  esp_err_t err = esp_camera_init(&config);
-  if (err != ESP_OK) {
-    Serial.printf("Camera init failed with error 0x%x", err);
-    return;
-  }
-
-  sensor_t * s = esp_camera_sensor_get();
-  // initial sensors are flipped vertically and colors are a bit saturated
-  if (s->id.PID == OV3660_PID) {
-    s->set_vflip(s, 1); // flip it back
-    s->set_brightness(s, 1); // up the brightness just a bit
-    s->set_saturation(s, -2); // lower the saturation
-  }
-  // drop down frame size for higher initial frame rate
-  if (config.pixel_format == PIXFORMAT_JPEG) {
-    s->set_framesize(s, FRAMESIZE_QVGA);
-  }
-
-#if defined(CAMERA_MODEL_M5STACK_WIDE) || defined(CAMERA_MODEL_M5STACK_ESP32CAM)
-  s->set_vflip(s, 1);
-  s->set_hmirror(s, 1);
-#endif
-
-#if defined(CAMERA_MODEL_ESP32S3_EYE)
-  s->set_vflip(s, 1);
-#endif
-
-  esp_err_t  card_err = init_sdcard();
-  if (card_err != ESP_OK) {
-    Serial.printf("SD Card init failed with error 0x%x", card_err);
-  }
-
-  /* Serial.println("Going to light sleep now"); */
-  /* delay(1000); */
-  /* Serial.flush();  */
-  /* esp_light_sleep_start(); */
-
-  start_wifi();
-
-  /* Serial.println("Started Wifi. Going to light sleep now"); */
-  /* delay(1000); */
-  /* Serial.flush(); */
-  /* esp_light_sleep_start(); // resumes here after awakening */
-
-  /* Serial.println("Started Camera Server"); */
-
-  // Track wifi connections
-  //WiFi.onEvent(onWiFiEvent);
-
-  // 5000 stack, prio 5 same at http streamer, core 1
-  xTaskCreatePinnedToCore( the_camera_loop, "the_camera_loop", 5000, NULL, 5, &the_camera_loop_task, 1);
-
-  delay(100);
+  
+  //led_blink(3);
+  attachInterrupt(digitalPinToInterrupt(GPIO_NUM_21), detectsMovement, RISING);
+  esp_sleep_enable_ext0_wakeup(GPIO_NUM_21, HIGH);
 }
 
-
-RTC_DATA_ATTR int noDetectCount = 0; // preserves accross reboots
-int sleepMult = 1;
-int loopCount = 0;
+// Loop Vars should be defined here
+int noMotionCount = 0;
+// Timer: Auxiliary variables
+unsigned long now = millis();
+boolean motion = false;
 
 void loop() {
-  if (++loopCount % 10 == 0) {
-    led_blink(2, 10, 50);
+  now = millis();
+  //ESP_LOGI("Loop", " count %d and noMotioncount %d",
+  ESP_LOGI("Loop", " noMotioncount %d", noMotionCount);
+  if ((digitalRead(BLUE_LED_PIN) == HIGH) && (motion == false)){
+    ESP_LOGI("Motion", " Started when %d", now);
+    motion = true;
+    noMotionCount = 0;
   }
-  // Wifi -- Users Connected to AP > 0?
-  uint8_t stationCount = WiFi.softAPgetStationNum();
-  if (stationCount > 0) {
-    Serial.printf("#AP clients: %d\n", stationCount);
-    startCameraServer();  // 71kb free, 47kb free when streaming.
-  } else {
-    stopCameraServer();  // 93kb free
+
+  if (startTimer && (now - lastTrigger > (MOTION_PROLONG*1000))) {
+    ESP_LOGI("Motion", " Stopped when %d", now);
+    digitalWrite(BLUE_LED_PIN, LOW);
+    startTimer = false;
+    motion = false;
   }
-  // Metrics:
-  ESP_LOGI("Free Heap", "%d", esp_get_free_heap_size());
-  // - stopCameraServer: 93 kb free
-  // - startCameraserver: 71 kb free, 47 kb free when streaming.
-  delay(2000);
+
+  if (motion == false){
+    if (++noMotionCount > SLEEP_AFTER_NOACTIVITY){
+      ESP_LOGI("Sleep", " going to sleep after %d seconds of no activity", SLEEP_AFTER_NOACTIVITY);
+      esp_deep_sleep_start();
+    }
+  }
+  delay(1000);
 }
