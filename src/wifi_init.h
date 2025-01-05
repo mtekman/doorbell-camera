@@ -15,7 +15,29 @@ void onWiFiEvent(WiFiEvent_t event) {
   }
 }
 
-void start_wifi() {
+void setup_wifi() {
+  delay(10);
+  Serial.println("\n\n");
+  ESP_LOGI("WIFI", "starting to connect to %s", WIFI_SSID);
+
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  ESP_LOGI("WIFI", "successfully connected to %s", WiFi.localIP());
+  Serial.println("\n\n");
+}
+
+void stop_wifi(){
+  WiFi.disconnect();
+  WiFi.mode(WIFI_OFF);
+  ESP_LOGI("WIFI", "disconnected");
+  Serial.println("\n\n");
+}
+
+void start_wifi_adhoc() {
   String junk;
   String cssid;
   String cssid2;

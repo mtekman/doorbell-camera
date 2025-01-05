@@ -1,5 +1,6 @@
 #include "esp_camera.h"
 #include <SD_MMC.h>
+#include <WiFi.h>
 
 // WARNING!!! PSRAM IC required for UXGA resolution and high JPEG quality
 //            Ensure ESP32 Wrover Module or other board with PSRAM is selected
@@ -11,6 +12,8 @@
 
 #include "sleep_funcs.h"
 #include "led_init.h"
+#include "wifi_credentials.h"
+#include "wifi_init.h"       // -- should be before recording_stuff.h
 #include "recording_stuff.h" // -- should be before motion_pir.h
 #include "motion_pir.h"
 //#include "mqtt_stuff.h" -- TODO
