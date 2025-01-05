@@ -2,9 +2,8 @@
 #ifndef MOTION_PIR_H
 #define MOTION_PIR_H
 
-#define MOTION_PIR_PIN GPIO_NUM_21 // GPIO pin for motion pullup
-#define MOTION_PROLONG 5           // motion is prolonged N seconds after initial trigger
-#define SLEEP_AFTER_NOACTIVITY 20  // deep sleep after N seconds no activity
+#define MOTION_PIR_PIN GPIO_NUM_21       // GPIO pin for motion pullup
+#define MOTION_PROLONG 5                 // motion is prolonged N seconds after initial trigger
 
 boolean startTimer = false;
 unsigned long lastTrigger = 0;
@@ -24,8 +23,7 @@ void IRAM_ATTR detectsMovement() {
   noMotionCount = 0;
 }
 
-inline void configure_pir_setup (){
-  esp_sleep_wakeup_cause_t wakeup_reason = print_wakeup_reason();   //Print the wakeup reason for ESP32
+inline void configure_pir_setup (esp_sleep_wakeup_cause_t wakeup_reason){
   if (wakeup_reason == ESP_SLEEP_WAKEUP_EXT0) {
     detectsMovement(); // Assume woken up by movement
   } else {

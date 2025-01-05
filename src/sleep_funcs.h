@@ -1,8 +1,12 @@
 
-#ifndef SLEEP_FUNC_H
-#define SLEEP_FUNC_H
+#ifndef SLEEP_FUNCS_H
+#define SLEEP_FUNCS_H
 
-#define uS_TO_S_FACTOR 1000000  /* Conversion factor for micro seconds to seconds */
+#define MICROSECONDS 1000000  /* Conversion factor for micro seconds to seconds */
+
+#define LIGHT_SLEEP_AFTER_NOACTIVITY 20  // light sleep after N seconds no activity
+#define LIGHT_SLEEP_WAKEUP_AFTER 20      // wake up after N seconds in light sleep
+#define DEEP_SLEEP_AFTER_NOACTIVITY 40   // deep sleep after N seconds no activity
 
 static esp_sleep_wakeup_cause_t inline print_wakeup_reason() {
   esp_sleep_wakeup_cause_t wakeup_reason;
