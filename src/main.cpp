@@ -39,9 +39,12 @@ void loop() {
   motion_stop_after_prolong();
 
   if (motion == false){
-    if (++noMotionCount > SLEEP_AFTER_NOACTIVITY){
-      ESP_LOGI("Sleep", " going to sleep after %d seconds of no activity", SLEEP_AFTER_NOACTIVITY);
-      esp_deep_sleep_start();
+    ++noMotionCount;
+    if (noMotionCount >= DEEP_SLEEP_AFTER_NOACTIVITY){
+      sleep_deep();
+    }
+    if (noMotionCount % LIGHT_SLEEP_AFTER_NOACTIVITY == 0){
+      sleep_light();
     }
   }
   delay(1000);

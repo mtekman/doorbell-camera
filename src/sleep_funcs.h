@@ -26,7 +26,21 @@ static esp_sleep_wakeup_cause_t inline print_wakeup_reason() {
 }
 
 static void inline esp_wakeup_seconds(int seconds) {
-  esp_sleep_enable_timer_wakeup(seconds * uS_TO_S_FACTOR);
+  esp_sleep_enable_timer_wakeup(seconds * MICROSECONDS);
 }
 
-#endif // SLEEP_FUNC_H
+static void inline sleep_deep() {
+  ESP_LOGI("Sleep", "going to DEEP sleep after %d seconds of no activity", DEEP_SLEEP_AFTER_NOACTIVITY);
+  esp_deep_sleep_start();
+}
+
+static void inline sleep_light() {
+  ESP_LOGI("Sleep", "going to LIGHT sleep for %ds after %ds of no activity at %d",
+           LIGHT_SLEEP_WAKEUP_AFTER, LIGHT_SLEEP_AFTER_NOACTIVITY, millis());
+  esp_sleep_enable_timer_wakeup(LIGHT_SLEEP_WAKEUP_AFTER * MICROSECONDS);
+  esp_light_sleep_start();
+  ESP_LOGI("Sleep", "Woke up at %d", millis());
+  esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_TIMER); // Remove the timer wakeup
+}
+
+#endif // SLEEP_FUNCS_H
