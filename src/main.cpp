@@ -22,19 +22,23 @@
 esp_err_t init_sdcard();
 
 RTC_DATA_ATTR int bootCount = 0;
-//RTC_DATA_ATTR int noDetectCount = 0; // preserves accross reboots
-
 
 void setup() {
   Serial.begin(115200);
   Serial.setDebugOutput(true);
   Serial.println("START: Boot number: " + String(++bootCount));
-  
-  pinMode(BLUE_LED_PIN, OUTPUT); // Initialize the LED pin as an output  
+
+  pinMode(BLUE_LED_PIN, OUTPUT); // Initialize the LED pin as an output
   pinMode(MOTION_PIR_PIN, INPUT_PULLUP);
 
   // The detectMovement function happens outside of all loops.
-  configure_pir_setup();
+  esp_sleep_wakeup_cause_t wakeup_reason = print_wakeup_reason();   //Print the wakeup reason for ESP32
+  configure_pir_setup(wakeup_reason);
+
+  //Only setup wifi if there is something to report
+  if (wakeup_reason == ESP_SLEEP_WAKEUP_EXT0) {
+    recordTheMotionThenResetWifi();
+  }
 }
 
 void loop() {
