@@ -11,7 +11,9 @@
 
 #include "sleep_funcs.h"
 #include "led_init.h"
+#include "recording_stuff.h" // -- should be before motion_pir.h
 #include "motion_pir.h"
+//#include "mqtt_stuff.h" -- TODO
 
 esp_err_t init_sdcard();
 
